@@ -1,51 +1,56 @@
-pub struct Flatten<O>
+pub struct FlattenedIterator<T>
 where
-    O: Iterator,
-    O::Item: IntoIterator,
+    T: Iterator,
+    T::Item: IntoIterator,
 {
-    outer: O,
-    inner: Option<<O::Item as IntoIterator>::IntoIter>,
+    // outer = [[1, 2, 3], [1, 3, 6]]
+    // inner_iterator(s) = [1, 2, 3]/ [1, 3, 6]
+    inner_iterator: Option<<T::Item as IntoIterator>::IntoIter>,
+    outer: T,
 }
 
-pub fn flatten<T>(iter: T) -> Flatten<T::IntoIter>
+impl<T> FlattenedIterator<T>
+where
+    T: Iterator,
+    T::Item: IntoIterator,
+{
+    fn new(outer: T) -> Self {
+        FlattenedIterator {
+            outer,
+            inner_iterator: None,
+        }
+    }
+}
+
+impl<T> Iterator for FlattenedIterator<T>
+where
+    T: Iterator,
+    T::Item: IntoIterator,
+{
+    type Item = <T::Item as IntoIterator>::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            if let Some(ref mut inner_iter) = self.inner_iterator {
+                if let Some(i) = inner_iter.next() {
+                    return Some(i);
+                }
+                self.inner_iterator = None;
+            }
+
+            self.inner_iterator = Some(self.outer.next()?.into_iter());
+        }
+    }
+}
+
+pub fn flatten<T>(iter: T) -> FlattenedIterator<T::IntoIter>
 where
     T: IntoIterator,
     T::Item: IntoIterator,
 {
-    Flatten::new(iter.into_iter())
+    FlattenedIterator::new(iter.into_iter())
 }
 
-impl<O> Flatten<O>
-where
-    O: Iterator,
-    O::Item: IntoIterator,
-{
-    fn new(outer: O) -> Self {
-        Flatten { outer, inner: None }
-    }
-}
-
-impl<O> Iterator for Flatten<O>
-where
-    O: Iterator,
-    O::Item: IntoIterator,
-{
-    type Item = <O::Item as IntoIterator>::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        loop {
-            if let Some(ref mut inner) = self.inner {
-                if let Some(i) = inner.next() {
-                    return Some(i);
-                }
-                self.inner = None
-            }
-
-            let next_inner_iter = self.outer.next()?.into_iter();
-            self.inner = Some(next_inner_iter);
-        }
-    }
-}
 
 #[cfg(test)]
 mod test {
@@ -56,12 +61,8 @@ mod test {
     }
 
     #[test]
-    fn once() {
-        assert_eq!(flatten(std::iter::once(vec!["a"])).count(), 1);
-    }
-
-    #[test]
     fn two() {
-        assert_eq!(flatten(std::iter::once(vec!["a", "b"])).count(), 2);
+        assert_eq!(flatten(std::iter::once(vec!["a"])).count(), 1);
+        assert_eq!(flatten(vec![vec!["a"], vec!["1"]]).count(), 2);
     }
 }
