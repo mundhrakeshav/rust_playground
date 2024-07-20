@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 pub trait Draw {
@@ -18,13 +18,13 @@ impl Screen {
 }
 
 fn main() {
-    let counter = Mutex::new(0);
-    let mut handles = vec![];
+    let counter: Arc<Mutex<i32>> = Arc::new(Mutex::new(0));
+    let mut handles: Vec<thread::JoinHandle<()>> = vec![];
 
     for _ in 0..10 {
-        let handle = thread::spawn(move || {
-            let mut num = counter.lock().unwrap();
-
+        let ctr: Arc<Mutex<i32>> = counter.clone();
+        let handle: thread::JoinHandle<()> = thread::spawn(move || {
+            let mut num: std::sync::MutexGuard<i32> = ctr.lock().unwrap();
             *num += 1;
         });
         handles.push(handle);
