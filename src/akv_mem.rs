@@ -1,41 +1,25 @@
-use libactionkv::ActionKV;
-const USAGE: &str = "
-Usage:
-    akv_mem FILE get KEY
-    akv_mem FILE delete KEY
-    akv_mem FILE insert KEY VALUE
-    akv_mem FILE update KEY VALUE
-";
+use byteorder::{BigEndian, LittleEndian};
+use byteorder::{ReadBytesExt, WriteBytesExt};
+use std::fs::File;
+use std::io::{Cursor, Read, Write};
+
+fn parity_bit(bytes: &[u8]) -> u8 {
+    let mut n_ones = 0;
+    for byte in bytes {
+        n_ones += byte.count_ones();
+        println!("{} (0b{:08b}) has {} one bits", byte, byte, byte.count_ones());
+    }
+
+    (n_ones % 2 == 0) as u8
+}
+
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
-
-    let fname = args.get(1).expect(&USAGE);
-    let action: &str = args.get(2).expect(&USAGE).as_ref();
-    let key: &str = args.get(3).expect(&USAGE).as_ref();
-    let maybe_value = args.get(4);
-
-    let path = std::path::Path::new(&fname);
-    let mut store = ActionKV::open(path).expect("unable to open file");
-    store.load().expect("unable to load data");
-
-    match action {
-        //     "get" => match store.get(key).unwrap() {
-        //         None => eprintln!("{:?} not found", key),
-        //         Some(value) => println!("{:?}", value),
-        //     },
-
-        //     "delete" => store.delete(key).unwrap(),
-
-        //     "insert" => {
-        //         let value = maybe_value.expect(&USAGE).as_ref();
-        //         store.insert(key, value).unwrap()
-        //     }
-
-        //     "update" => {
-        //         let value = maybe_value.expect(&USAGE).as_ref();
-        //         store.update(key, value).unwrap()
-        //     }
-        _ => eprintln!("{}", &USAGE),
-    }
-}
+    let abc = b"abc";
+    println!("input: {:?}", abc);
+    println!("output: {:08x}", parity_bit(abc));
+    println!();
+    let abcd = b"abcd";
+    println!("input: {:?}", abcd);
+    println!("result: {:08x}", parity_bit(abcd))
+  }
