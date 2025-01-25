@@ -12,7 +12,7 @@ fn main() {
 
     let fname = args.get(1).expect(&USAGE);
     let action: &str = args.get(2).expect(&USAGE).as_ref();
-    let key: &str = args.get(3).expect(&USAGE).as_ref();
+    let key = args.get(3).expect(&USAGE).as_ref();
     let maybe_value = args.get(4);
 
     let path = std::path::Path::new(&fname);
@@ -20,22 +20,22 @@ fn main() {
     store.load().expect("unable to load data");
 
     match action {
-        //     "get" => match store.get(key).unwrap() {
-        //         None => eprintln!("{:?} not found", key),
-        //         Some(value) => println!("{:?}", value),
-        //     },
+        "get" => match store.get(key).unwrap() {
+            None => eprintln!("{:?} not found", key),
+            Some(value) => println!("{:?}", String::from_utf8(value).expect("error ")),
+        },
 
-        //     "delete" => store.delete(key).unwrap(),
+        "delete" => store.delete(key).unwrap(),
 
-        //     "insert" => {
-        //         let value = maybe_value.expect(&USAGE).as_ref();
-        //         store.insert(key, value).unwrap()
-        //     }
+        "insert" => {
+            let value = maybe_value.expect(&USAGE).as_ref();
+            store.insert(key, value).unwrap()
+        }
 
-        //     "update" => {
-        //         let value = maybe_value.expect(&USAGE).as_ref();
-        //         store.update(key, value).unwrap()
-        //     }
+        "update" => {
+            let value = maybe_value.expect(&USAGE).as_ref();
+            store.update(key, value).unwrap()
+        }
         _ => eprintln!("{}", &USAGE),
     }
 }
