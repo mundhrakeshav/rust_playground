@@ -13,7 +13,7 @@ path = "src/akv_mem.rs"
 
 [[bin]]
 name = "akv_disk"
-path = "src/akv_mem.rs"
+path = "src/akv_disk.rs"
 
 [dependencies]
 bincode = "1.3.3"
