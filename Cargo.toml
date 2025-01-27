@@ -8,10 +8,15 @@ name = "libactionkv"
 path = "src/lib.rs"
 
 [[bin]]
-name = "binactionkv"
+name = "akv_mem"
+path = "src/akv_mem.rs"
+
+[[bin]]
+name = "akv_disk"
 path = "src/akv_mem.rs"
 
 [dependencies]
+bincode = "1.3.3"
 byteorder = "1.5.0"
 crc = "3.2.1"
 serde = "1.0.217"
