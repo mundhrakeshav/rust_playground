@@ -133,7 +133,7 @@ fn send_data(
         stream.write_all(&buffer[..bytes_read])?;
         bytes_sent += bytes_read as u64;
         // Optional: print progress
-        // println!("Sent {}/{} bytes...", bytes_sent, filesize);
+        println!("Sent {}/{} bytes...", bytes_sent, filesize);
     }
 
     // Ensure all buffered data is sent
