@@ -127,7 +127,7 @@ fn handle_client(mut stream: TcpStream) {
                 Ok(_) => {
                     println!("File '{}' uploaded successfully.", filename);
                     // Send success response header using the stream returned by into_inner()
-                    let response = format!("{}Status: OK\n\n", RESPONSE_VERSION);
+                    let response = format!("{}\nStatus: OK\n\n", RESPONSE_VERSION);
                     if let Err(e) = stream.write_all(response.as_bytes()) {
                         eprintln!("Error sending OK response: {}", e);
                     }
