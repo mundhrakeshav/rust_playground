@@ -74,8 +74,8 @@ fn handle_client(mut stream: TcpStream) {
     }
 
     let command = match header_lines.get(1).map(|s| s.trim()) {
-        Some("COMMAND: UPLOAD") => Some(Command::Upload),
-        Some("COMMAND: DOWNLOAD") => Some(Command::Download),
+        Some("COMMAND: UPLOAD") => Command::Upload,
+        Some("COMMAND: DOWNLOAD") => Command::Download,
         _ => {
             return send_error(
                 &mut stream,
@@ -109,7 +109,7 @@ fn handle_client(mut stream: TcpStream) {
             }
         }
     } else {
-        if let Some(Command::Upload) = command {
+        if let Command::Upload = command {
             // This is an error only for UPLOAD command
             return send_error(
                 &mut stream,
@@ -119,7 +119,7 @@ fn handle_client(mut stream: TcpStream) {
     };
 
     match command {
-        Some(Command::Upload) => {
+        Command::Upload => {
             if filesize == 0 {
                 return send_error(&mut stream, "something went wrong with file size");
             }
@@ -147,11 +147,15 @@ fn handle_client(mut stream: TcpStream) {
         _ => {}
     }
 
-    println!("Connection from {} closed.", stream.peer_addr().unwrap_or_else(|_| "unknown address".parse().unwrap()));
-
+    println!(
+        "Connection from {} closed.",
+        stream
+            .peer_addr()
+            .unwrap_or_else(|_| "unknown address".parse().unwrap())
+    );
 }
 
-fn main() -> std::io::Result<()>  {
+fn main() -> std::io::Result<()> {
     let listener = TcpListener::bind("127.0.0.1:6969").unwrap();
 
     // Get the local address the listener is bound to and print it
@@ -249,6 +253,93 @@ fn receive_and_save_file(
 
     // Ensure all buffered data is written to the file
     file.flush()?;
+    Ok(())
+}
+
+fn send_file(stream: &mut TcpStream, filename: &str) -> std::io::Result<()> {
+    let file_path = Path::new(UPLOADS_DIR).join(filename);
+    // Basic path traversal check (should also be done on receive, but good to double check)
+    if filename.contains("..") || filename.starts_with("/") || filename.contains("\\") {
+        eprintln!(
+            "Security Alert: Attempted path traversal when sending file: {}",
+            filename
+        );
+        let error_msg = format!(
+            "{}Status: ERROR\nMessage: Invalid filename specified (potential path traversal)\n\n",
+            RESPONSE_VERSION
+        );
+        stream.write_all(error_msg.as_bytes())?;
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "Invalid filename specified (potential path traversal)",
+        ));
+    }
+    let mut file = match File::open(&file_path) {
+        Ok(f) => {
+            println!("Successfully opened file: {:?}", file_path);
+            f
+        }
+        Err(e) => {
+            send_error(
+                stream,
+                format!(
+                    "{}Status: ERROR\nMessage: Could not open file: {}\n\n",
+                    RESPONSE_VERSION, e
+                )
+                .as_str(),
+            );
+            return Err(e); // Propagate the original error
+        }
+    };
+
+    // Get the file size
+    let metadata = file.metadata()?;
+    let filesize = metadata.len();
+    println!("File size: {} bytes", filesize);
+
+    // Send the OK response header with file details
+    let response_header = format!(
+        "{}Status: OK\nFilename: {}\nFilesize: {}\n\n",
+        RESPONSE_VERSION, filename, filesize
+    );
+    println!(
+        "Sending response header:\n---START---\n{}---END---",
+        response_header
+    );
+    stream.write_all(response_header.as_bytes())?;
+    stream.flush()?; // Ensure header is sent before file data
+    println!("Sending file data ({} bytes)...", filesize);
+    let mut buffer = vec![0; 4096]; // 4KB buffer
+    let mut bytes_sent: u64 = 0;
+
+    loop {
+        let bytes_read = file.read(&mut buffer)?;
+        if bytes_read == 0 {
+            break; // End of file
+        }
+        stream.write_all(&buffer[..bytes_read])?;
+        bytes_sent += bytes_read as u64;
+        // Optional: print progress
+        // println!("Sent {}/{} bytes...", bytes_sent, filesize);
+    }
+
+    // Ensure all buffered data is sent over the network
+    stream.flush()?;
+
+    println!(
+        "Finished sending file data. Total bytes sent: {}",
+        bytes_sent
+    );
+
+    if bytes_sent != filesize {
+        eprintln!(
+            "Warning: Sent {} bytes for file '{}', but expected file size was {}. Connection may have closed prematurely.",
+             bytes_sent, filename, filesize
+         );
+        // Depending on requirements, you might return an error here.
+        // For now, we'll let it be a warning as some data was sent.
+    }
+
     Ok(())
 }
 
